@@ -1,0 +1,13 @@
+[Unit]
+Description=Jetson Streamlit Dashboard
+After=network.target
+
+[Service]
+User=opate
+WorkingDirectory=/home/opate/jetson-sensor-hub
+Environment="PATH=/home/opate/jetson-sensor-hub/myenv/bin"
+ExecStart=/home/opate/jetson-sensor-hub/myenv/bin/streamlit run dashboard.py --server.port 8501 --server.address 0.0.0.0
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

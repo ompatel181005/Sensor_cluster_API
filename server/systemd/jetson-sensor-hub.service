@@ -1,0 +1,13 @@
+[Unit]
+Description=Jetson Sensor Hub FastAPI
+After=network.target
+
+[Service]
+User=opate
+WorkingDirectory=/home/opate/jetson-sensor-hub
+Environment="PATH=/home/opate/jetson-sensor-hub/myenv/bin"
+ExecStart=/home/opate/jetson-sensor-hub/myenv/bin/uvicorn server:app --host 0.0.0.0 --port 8000
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

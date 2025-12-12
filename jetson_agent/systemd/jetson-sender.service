@@ -1,0 +1,11 @@
+[Unit]
+Description=Jetson sensor sender (one-shot)
+
+[Service]
+Type=oneshot
+User=waggle
+WorkingDirectory=/opt/jetson_sender
+Environment=SERVER_URL=http://131.193.183.176:8000/api/v1/readings
+Environment=DEVICE_ID=jetson-lab-01
+Environment=DEVICE_TOKEN=secret-token-1
+ExecStart=/usr/bin/python3 /opt/jetson_sender/jetson_sender.py

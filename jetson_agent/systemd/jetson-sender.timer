@@ -1,0 +1,9 @@
+[Unit]
+Description=Run jetson-sender every 1 second
+
+[Timer]
+OnBootSec=5
+OnUnitActiveSec=1
+
+[Install]
+WantedBy=timers.target

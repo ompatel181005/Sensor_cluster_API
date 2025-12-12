@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtualenvs
+venv/
+myenv/
+.env
+
+# DB and local data
+sensors.db
+*.sqlite*
+/data/
+*.csv
+
+# Streamlit cache
+.streamlit/
+
+# OS
+.DS_Store
