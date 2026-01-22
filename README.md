@@ -1,9 +1,3 @@
-Got it — below is a **fully copy-pastable, plain-text README** that **explicitly documents all API endpoints and URLs**, while keeping everything simple (no emojis, no complex formatting).
-
-You can replace your README entirely with this.
-
----
-
 Jetson Sensor Hub
 
 Overview
