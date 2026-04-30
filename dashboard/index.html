@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jetson Sensor Dashboard</title>
+  <style>
+    /* ===== CSS VARIABLES - THEME SYSTEM ===== */
+    :root {
+      --primary-color: #0879d6;
+      --success-color: #4caf50;
+      --warning-color: #ff9800;
+      --danger-color: #f44336;
+      --border-radius: 12px;
+      --spacing: 20px;
+      --transition: 0.3s ease;
+    }
+
+    /* Light Mode Colors */
+    [data-theme="light"] {
+      --bg-primary: #f0f2f5;
+      --bg-secondary: white;
+      --bg-tertiary: #f8f9fa;
+      --text-primary: #333;
+      --text-secondary: #6c757d;
+      --text-inverse: white;
+      --border-color: #e9ecef;
+      --shadow: rgba(0, 0, 0, 0.1);
+      --shadow-hover: rgba(0, 0, 0, 0.15);
+      --chart-grid: #f0f0f0;
+    }
+
+    /* Dark Mode Colors */
+    [data-theme="dark"] {
+      --bg-primary: #1a1d2e;
+      --bg-secondary: #22283a;
+      --bg-tertiary: #2a3048;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa0a6;
+      --text-inverse: #1a1d2e;
+      --border-color: #3d4458;
+      --shadow: rgba(0, 0, 0, 0.3);
+      --shadow-hover: rgba(0, 0, 0, 0.5);
+      --chart-grid: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: var(--spacing);
+      line-height: 1.6;
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: var(--spacing);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .theme-toggle {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: 50px;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all var(--transition);
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .theme-toggle:hover {
+      box-shadow: 0 4px 12px var(--shadow-hover);
+      transform: translateY(-1px);
+    }
+
+    .theme-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 50px;
+      background: transparent;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .theme-btn.active {
+      background: var(--primary-color);
+      color: white;
+      box-shadow: 0 2px 6px rgba(8, 121, 214, 0.3);
+    }
+
+    .theme-btn:not(.active) {
+      color: var(--text-secondary);
+    }
+
+    .theme-btn:not(.active):hover {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: calc(var(--spacing) * 1.5) 0 var(--spacing) 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-radius: var(--border-radius);
+      padding: var(--spacing);
+      margin-bottom: var(--spacing);
+      box-shadow: 0 2px 8px var(--shadow);
+      transition: all var(--transition);
+      border: 1px solid var(--border-color);
+    }
+
+    .card:hover {
+      box-shadow: 0 4px 16px var(--shadow-hover);
+    }
+
+    .grid {
+      display: grid;
+      gap: calc(var(--spacing) * 0.8);
+      margin-bottom: var(--spacing);
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+
+    .metric {
+      background: var(--bg-tertiary);
+      padding: calc(var(--spacing) * 0.75);
+      border-radius: 8px;
+      text-align: center;
+      border: 2px solid var(--border-color);
+      transition: all var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 16px var(--shadow-hover);
+      border-color: var(--primary-color);
+    }
+
+    .metric::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+      transition: left var(--transition);
+    }
+
+    .metric:hover::before {
+      left: 0;
+    }
+
+    .metric-label {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .metric-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--text-primary);
+      transition: transform var(--transition);
+    }
+
+    .controls {
+      display: flex;
+      gap: calc(var(--spacing) * 0.5);
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: calc(var(--spacing) * 0.5);
+    }
+
+    select, input[type="date"] {
+      padding: 10px 15px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 2px solid var(--border-color);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-family: inherit;
+      transition: all var(--transition);
+      cursor: pointer;
+    }
+
+    select:hover, input:hover {
+      border-color: var(--primary-color);
+      background: var(--bg-secondary);
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(8, 121, 214, 0.15);
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: none;
+      background: var(--primary-color);
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button:hover:not(:disabled) {
+      background: #0667b8;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(8, 121, 214, 0.3);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: var(--text-secondary);
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .btn-success {
+      background: var(--success-color);
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #45a049;
+      box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: var(--spacing) 0;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+      transition: background var(--transition);
+    }
+
+    th {
+      background: var(--bg-tertiary);
+      font-weight: 600;
+      color: var(--text-primary);
+      position: sticky;
+      top: 0;
+    }
+
+    tbody tr:hover {
+      background: var(--bg-tertiary);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 400px;
+      margin: var(--spacing) 0;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .text-muted {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    .alert {
+      padding: calc(var(--spacing) * 0.75);
+      border-radius: 8px;
+      margin: var(--spacing) 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .alert-info {
+      background: rgba(23, 162, 184, 0.15);
+      color: #17a2b8;
+      border-left: 4px solid #17a2b8;
+    }
+
+    .alert-warning {
+      background: rgba(255, 193, 7, 0.15);
+      color: #ffc107;
+      border-left: 4px solid #ffc107;
+    }
+
+    .alert-success {
+      background: rgba(40, 167, 69, 0.15);
+      color: #28a745;
+      border-left: 4px solid #28a745;
+    }
+
+    [data-theme="dark"] .alert-info { color: #5dcceb; }
+    [data-theme="dark"] .alert-warning { color: #ffd54f; }
+    [data-theme="dark"] .alert-success { color: #66bb6a; }
+
+    .loading {
+      text-align: center;
+      padding: calc(var(--spacing) * 2);
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      border: 3px solid var(--border-color);
+      border-top: 3px solid var(--primary-color);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .status-live {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .status-loading {
+      background: var(--warning-color);
+      color: white;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .checkbox-container input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: var(--primary-color);
+    }
+
+    .table-container {
+      max-height: 400px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+    }
+
+    .table-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-track {
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+      background: var(--primary-color);
+      border-radius: 4px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb:hover {
+      background: #0667b8;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 2px solid var(--border-color);
+      margin-bottom: var(--spacing);
+    }
+
+    .tab {
+      padding: 10px 20px;
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: all var(--transition);
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
+    .tab.active {
+      color: var(--primary-color);
+      border-bottom-color: var(--primary-color);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    pre {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: var(--spacing);
+      overflow-x: auto;
+      margin: calc(var(--spacing) * 0.5) 0;
+      border-left: 4px solid var(--primary-color);
+    }
+
+    code {
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: var(--text-primary);
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      h1 {
+        font-size: 1.8rem;
+      }
+
+      .header-container {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .theme-toggle {
+        align-self: flex-end;
+      }
+
+      h2 {
+        font-size: 1.3rem;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      select, input, button {
+        width: 100%;
+      }
+
+      .checkbox-container {
+        margin-left: 0;
+        justify-content: flex-start;
+      }
+
+      .metric-value {
+        font-size: 1.5rem;
+      }
+
+      .chart-container {
+        height: 300px;
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+  </style>
+</head>
+<body data-theme="light">
+
+  <div class="header-container">
+    <h1>
+      <span>🌡️</span>
+      <span>Jetson Sensor Dashboard</span>
+      <span id="statusBadge" class="status-badge status-loading">⏳ Loading...</span>
+    </h1>
+
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <button class="theme-btn active" id="lightBtn">
+        <span>☀️</span>
+        <span>Light</span>
+      </button>
+      <button class="theme-btn" id="darkBtn">
+        <span>🌙</span>
+        <span>Dark</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="card fade-in">
+    <div class="controls">
+      <select id="deviceSelect">
+        <option>Loading devices...</option>
+      </select>
+      <input type="date" id="daySelect">
+      <button onclick="loadData()" id="refreshBtn">
+        <span>🔄</span>
+        <span>Refresh</span>
+      </button>
+      <div class="checkbox-container">
+        <input type="checkbox" id="autoRefresh">
+        <label for="autoRefresh">Auto-refresh (30s)</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Latest Reading -->
+  <h2>
+    <span>📊</span>
+    <span>Latest Reading</span>
+  </h2>
+  <div class="card fade-in">
+    <div class="grid grid-4" id="metricsGrid">
+      <div class="metric">
+        <div class="metric-label">🌡️ Temperature</div>
+        <div class="metric-value" id="temp">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">💧 Humidity</div>
+        <div class="metric-value" id="humidity">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">🔽 Pressure</div>
+        <div class="metric-value" id="pressure">--</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">⚡ Gas Resistance</div>
+        <div class="metric-value" id="gas">--</div>
+      </div>
+    </div>
+    <p class="text-muted">⏰ Last updated: <span id="timestamp">--</span></p>
+  </div>
+
+  <!-- Day History -->
+  <h2>
+    <span>📈</span>
+    <span>Day History</span>
+  </h2>
+  <div class="card fade-in">
+    <div id="historyContent">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading historical data...</p>
+      </div>
+    </div>
+    <div class="chart-container">
+      <canvas id="lineChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Download -->
+  <h2>
+    <span>💾</span>
+    <span>Download Data</span>
+  </h2>
+  <div class="card fade-in">
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+      <button onclick="downloadCSV()" class="btn-success">
+        <span>⬇️</span>
+        <span>Download CSV for Selected Day</span>
+      </button>
+      <span class="text-muted" id="downloadInfo">Select a device and date above</span>
+    </div>
+  </div>
+
+  <!-- API Guide -->
+  <h2>
+    <span>💻</span>
+    <span>API Usage Guide</span>
+  </h2>
+  <div class="card fade-in">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(0)">📡 Latest Reading</button>
+      <button class="tab" onclick="switchTab(1)">📥 Download CSV</button>
+      <button class="tab" onclick="switchTab(2)">📋 List Devices</button>
+    </div>
+
+    <div class="tab-content active">
+      <h3 style="margin-bottom: 10px;">Get Latest Reading</h3>
+      <pre><code>import requests
+
+device_id = "your-device-id"
+base = "https://sage.evl.uic.edu/api/v1"
+
+response = requests.get(f"{base}/devices/{device_id}/latest")
+data = response.json()
+print(data["payload"])</code></pre>
+    </div>
+
+    <div class="tab-content">
+      <h3 style="margin-bottom: 10px;">Download CSV</h3>
+      <pre><code>import requests
+
+device_id = "your-device-id"
+day = "2024-01-22"
+base = "https://sage.evl.uic.edu/api/v1"
+
+response = requests.get(
+    f"{base}/devices/{device_id}/csv",
+    params={"day": day}
+)
+
+with open(f"{device_id}_{day}.csv", "w") as f:
+    f.write(response.text)</code></pre>
+    </div>
+
+    <div class="tab-content">
+      <h3 style="margin-bottom: 10px;">List All Devices</h3>
+      <pre><code>import requests
+
+base = "https://sage.evl.uic.edu/api/v1"
+
+response = requests.get(f"{base}/devices")
+data = response.json()
+devices = data.get("devices", [])
+
+for device in devices:
+    print(device)</code></pre>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const API_BASE = "https://sage.evl.uic.edu/api/v1";
+    let currentDevice = null;
+    let chart = null;
+    let autoRefreshInterval = null;
+
+    // Cache for performance
+    const cache = {
+      devices: null,
+      devicesCachedAt: null,
+      historicalData: {},
+      CACHE_DURATION: 5 * 60 * 1000
+    };
+
+    // Theme Management
+    function toggleTheme() {
+      const body = document.body;
+      const currentTheme = body.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+      body.setAttribute('data-theme', newTheme);
+      localStorage.setItem('theme', newTheme);
+
+      // Update buttons
+      document.getElementById('lightBtn').classList.toggle('active');
+      document.getElementById('darkBtn').classList.toggle('active');
+
+      // Update chart if it exists
+      if (chart) {
+        updateChartTheme();
+      }
+    }
+
+    // Load saved theme
+    function loadTheme() {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      document.body.setAttribute('data-theme', savedTheme);
+
+      if (savedTheme === 'dark') {
+        document.getElementById('lightBtn').classList.remove('active');
+        document.getElementById('darkBtn').classList.add('active');
+      }
+    }
+
+    // Update chart colors based on theme
+    function updateChartTheme() {
+      const theme = document.body.getAttribute('data-theme');
+      const gridColor = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#f0f0f0';
+      const textColor = theme === 'dark' ? '#e8eaed' : '#333';
+
+      if (chart && chart.options) {
+        chart.options.scales.x.grid.color = gridColor;
+        chart.options.scales.y.grid.color = gridColor;
+        chart.options.scales.x.ticks.color = textColor;
+        chart.options.scales.y.ticks.color = textColor;
+        chart.options.plugins.legend.labels.color = textColor;
+        chart.update();
+      }
+    }
+
+    // Utility: Fetch with timeout and retry
+    async function fetchWithRetry(url, options = {}, retries = 3, timeout = 10000) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+          const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          return response;
+        } catch (error) {
+          if (i === retries - 1) throw error;
+          await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+        }
+      }
+    }
+
+    // Update status badge
+    function updateStatus(status, text) {
+      const badge = document.getElementById('statusBadge');
+      badge.className = 'status-badge';
+
+      if (status === 'live') {
+        badge.classList.add('status-live');
+        badge.innerHTML = '🟢 ' + (text || 'Live');
+      } else if (status === 'loading') {
+        badge.classList.add('status-loading');
+        badge.innerHTML = '⏳ ' + (text || 'Loading...');
+      }
+    }
+
+    // Initialize
+    async function init() {
+      loadTheme();
+      updateStatus('loading', 'Initializing...');
+
+      try {
+        await loadDevices();
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('daySelect').value = today;
+
+        await loadData();
+        updateStatus('live', 'Connected');
+
+        document.getElementById('autoRefresh').addEventListener('change', toggleAutoRefresh);
+
+      } catch (error) {
+        console.error('Initialization failed:', error);
+        showAlert('Failed to initialize dashboard. Please refresh the page.', 'warning');
+      }
+    }
+
+    // Load devices with caching
+    async function loadDevices() {
+      const now = Date.now();
+
+      if (cache.devices &&
+          cache.devicesCachedAt &&
+          (now - cache.devicesCachedAt) < cache.CACHE_DURATION) {
+        populateDeviceSelect(cache.devices);
+        return;
+      }
+
+      try {
+        const response = await fetchWithRetry(`${API_BASE}/devices`);
+        const data = await response.json();
+        const devices = data.devices || [];
+
+        cache.devices = devices;
+        cache.devicesCachedAt = now;
+
+        populateDeviceSelect(devices);
+
+      } catch (error) {
+        console.error('Failed to load devices:', error);
+        document.getElementById('deviceSelect').innerHTML =
+          '<option>Error loading devices</option>';
+        throw error;
+      }
+    }
+
+    function populateDeviceSelect(devices) {
+      const select = document.getElementById('deviceSelect');
+      select.innerHTML = devices.map(d =>
+        `<option value="${d}">${d}</option>`
+      ).join('');
+
+      if (devices.length > 0) {
+        currentDevice = devices[0];
+      }
+    }
+
+    // Load all data (parallel requests)
+    async function loadData() {
+      if (!currentDevice) {
+        currentDevice = document.getElementById('deviceSelect').value;
+      }
+
+      updateStatus('loading', 'Loading data...');
+      document.getElementById('refreshBtn').disabled = true;
+
+      try {
+        await Promise.all([
+          loadLatestReading(),
+          loadHistoricalData()
+        ]);
+
+        updateStatus('live', 'Connected');
+
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        showAlert('Failed to load some data. Check your connection.', 'warning');
+      } finally {
+        document.getElementById('refreshBtn').disabled = false;
+      }
+    }
+
+    // Load latest reading
+    async function loadLatestReading() {
+      try {
+        const response = await fetchWithRetry(`${API_BASE}/devices/${currentDevice}/latest`);
+        const data = await response.json();
+        const payload = data.payload || {};
+
+        animateValue('temp', payload.temperature_c ? `${payload.temperature_c}°C` : 'N/A');
+        animateValue('humidity', payload.humidity_relative_percent ? `${payload.humidity_relative_percent}%` : 'N/A');
+        animateValue('pressure', payload.pressure_hpa ? `${payload.pressure_hpa} hPa` : 'N/A');
+        animateValue('gas', payload.gas_resistance_ohms ? `${payload.gas_resistance_ohms} Ω` : 'N/A');
+
+        document.getElementById('timestamp').textContent =
+          data.timestamp ? new Date(data.timestamp).toLocaleString() : 'N/A';
+
+      } catch (error) {
+        console.error('Failed to load latest reading:', error);
+        throw error;
+      }
+    }
+
+    // Animate value changes
+    function animateValue(elementId, value) {
+      const element = document.getElementById(elementId);
+      element.style.transition = 'all 0.3s ease';
+      element.style.transform = 'scale(1.1)';
+      element.textContent = value;
+
+      setTimeout(() => {
+        element.style.transform = 'scale(1)';
+      }, 300);
+    }
+
+    // Load historical data with caching
+    async function loadHistoricalData() {
+      const day = document.getElementById('daySelect').value;
+      const cacheKey = `${currentDevice}_${day}`;
+      const historyDiv = document.getElementById('historyContent');
+
+      if (cache.historicalData[cacheKey]) {
+        renderHistoricalData(cache.historicalData[cacheKey], historyDiv);
+        return;
+      }
+
+      try {
+        historyDiv.innerHTML = `
+          <div class="loading">
+            <div class="spinner"></div>
+            <p>Loading...</p>
+          </div>
+        `;
+
+        const response = await fetchWithRetry(
+          `${API_BASE}/devices/${currentDevice}/readings?from_date=${day}&to_date=${day}`
+        );
+        const readings = await response.json();
+
+        cache.historicalData[cacheKey] = readings;
+
+        renderHistoricalData(readings, historyDiv);
+
+        document.getElementById('downloadInfo').textContent =
+          `Ready to download ${readings.length} readings for ${day}`;
+
+      } catch (error) {
+        console.error('Failed to load historical data:', error);
+        historyDiv.innerHTML = `
+          <div class="alert alert-warning">
+            ⚠️ Failed to load historical data. Please try again.
+          </div>
+        `;
+        throw error;
+      }
+    }
+
+    // Render historical data
+    function renderHistoricalData(readings, container) {
+      if (!readings || readings.length === 0) {
+        container.innerHTML = `
+          <div class="alert alert-info">
+            ℹ️ No readings found for this date.
+          </div>
+        `;
+        if (chart) chart.destroy();
+        return;
+      }
+
+      const displayReadings = readings.slice(-20);
+      const table = `
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Temp (°C)</th>
+                <th>Humidity (%)</th>
+                <th>Pressure (hPa)</th>
+                <th>Gas (Ω)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${displayReadings.map(r => `
+                <tr>
+                  <td>${new Date(r.timestamp).toLocaleTimeString()}</td>
+                  <td>${r.payload.temperature_c || 'N/A'}</td>
+                  <td>${r.payload.humidity_relative_percent || 'N/A'}</td>
+                  <td>${r.payload.pressure_hpa || 'N/A'}</td>
+                  <td>${r.payload.gas_resistance_ohms || 'N/A'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <p class="text-muted" style="margin-top: 10px;">
+          Showing last ${displayReadings.length} of ${readings.length} total readings
+        </p>
+      `;
+      container.innerHTML = table;
+
+      updateChart(readings);
+    }
+
+    // Update chart
+    function updateChart(readings) {
+      const ctx = document.getElementById('lineChart').getContext('2d');
+
+      if (chart) chart.destroy();
+
+      const maxPoints = 100;
+      const step = Math.ceil(readings.length / maxPoints);
+      const sampledReadings = readings.filter((_, i) => i % step === 0);
+
+      const labels = sampledReadings.map(r =>
+        new Date(r.timestamp).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      );
+      const temps = sampledReadings.map(r => r.payload.temperature_c);
+      const humidity = sampledReadings.map(r => r.payload.humidity_relative_percent);
+      const pressure = sampledReadings.map(r => r.payload.pressure_hpa);
+
+      const theme = document.body.getAttribute('data-theme');
+      const gridColor = theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#f0f0f0';
+      const textColor = theme === 'dark' ? '#e8eaed' : '#333';
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Temperature (°C)',
+              data: temps,
+              borderColor: '#FF6B6B',
+              backgroundColor: 'rgba(255, 107, 107, 0.1)',
+              borderWidth: 3,
+              tension: 0.4,
+              pointRadius: 2,
+              pointHoverRadius: 5
+            },
+            {
+              label: 'Humidity (%)',
+              data: humidity,
+              borderColor: '#4ECDC4',
+              backgroundColor: 'rgba(78, 205, 196, 0.1)',
+              borderWidth: 3,
+              tension: 0.4,
+              pointRadius: 2,
+              pointHoverRadius: 5
+            },
+            {
+              label: 'Pressure (hPa)',
+              data: pressure,
+              borderColor: '#95E1D3',
+              backgroundColor: 'rgba(149, 225, 211, 0.1)',
+              borderWidth: 3,
+              tension: 0.4,
+              pointRadius: 2,
+              pointHoverRadius: 5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: {
+            duration: 500
+          },
+          interaction: {
+            mode: 'index',
+            intersect: false
+          },
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                font: { size: 14, weight: 'bold' },
+                usePointStyle: true,
+                color: textColor
+              }
+            },
+            tooltip: {
+              backgroundColor: theme === 'dark' ? 'rgba(34, 40, 58, 0.95)' : 'rgba(0, 0, 0, 0.8)',
+              padding: 12,
+              titleFont: { size: 14, weight: 'bold' },
+              bodyFont: { size: 13 }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: {
+                maxTicksLimit: 15,
+                font: { size: 11 },
+                color: textColor
+              }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: {
+                font: { size: 11 },
+                color: textColor
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Download CSV
+    async function downloadCSV() {
+      const day = document.getElementById('daySelect').value;
+
+      if (!currentDevice || !day) {
+        showAlert('Please select a device and date first.', 'warning');
+        return;
+      }
+
+      try {
+        updateStatus('loading', 'Downloading...');
+
+        const response = await fetchWithRetry(
+          `${API_BASE}/devices/${currentDevice}/csv?day=${day}`
+        );
+        const blob = await response.blob();
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentDevice}_${day}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        updateStatus('live', 'Connected');
+        showAlert('CSV downloaded successfully!', 'success');
+
+      } catch (error) {
+        console.error('Failed to download CSV:', error);
+        showAlert('Failed to download CSV. Please try again.', 'warning');
+        updateStatus('live', 'Connected');
+      }
+    }
+
+    // Show alert message
+    function showAlert(message, type = 'info') {
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type} fade-in`;
+      alertDiv.innerHTML = message;
+      alertDiv.style.transition = 'opacity 0.3s ease';
+
+      const firstCard = document.querySelector('.card');
+      firstCard.parentNode.insertBefore(alertDiv, firstCard);
+
+      setTimeout(() => {
+        alertDiv.style.opacity = '0';
+        setTimeout(() => alertDiv.remove(), 300);
+      }, 5000);
+    }
+
+    // Toggle auto-refresh
+    function toggleAutoRefresh() {
+      const checkbox = document.getElementById('autoRefresh');
+
+      if (checkbox.checked) {
+        autoRefreshInterval = setInterval(() => {
+          loadData();
+        }, 5000);
+        showAlert('✅ Auto-refresh enabled (every 5 seconds)', 'success');
+      } else {
+        if (autoRefreshInterval) {
+          clearInterval(autoRefreshInterval);
+          autoRefreshInterval = null;
+        }
+        showAlert('ℹ️ Auto-refresh disabled', 'info');
+      }
+    }
+
+    // Switch tabs
+    function switchTab(index) {
+      const tabs = document.querySelectorAll('.tab');
+      const contents = document.querySelectorAll('.tab-content');
+
+      tabs.forEach((tab, i) => {
+        if (i === index) {
+          tab.classList.add('active');
+          contents[i].classList.add('active');
+        } else {
+          tab.classList.remove('active');
+          contents[i].classList.remove('active');
+        }
+      });
+    }
+
+    // Event listeners
+    document.getElementById('deviceSelect').addEventListener('change', () => {
+      currentDevice = document.getElementById('deviceSelect').value;
+      loadData();
+    });
+
+    document.getElementById('daySelect').addEventListener('change', () => {
+      loadHistoricalData();
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'r') {
+          e.preventDefault();
+          loadData();
+        } else if (e.key === 'd') {
+          e.preventDefault();
+          toggleTheme();
+        }
+      }
+    });
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+      if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+      if (chart) chart.destroy();
+    });
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html
